@@ -1,0 +1,215 @@
+esphome:
+  name: powmr-solar
+  friendly_name: powmr-solar
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "mBQkOWTgiJWr48ll9kZMSbT37MMGv4+6JQiDfqGlqZo="
+
+ota:
+  - platform: esphome
+    password: "4e983c573c55185e6c6368546ba1a5af"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  manual_ip:
+    static_ip: 192.168.5.45
+    gateway: 192.168.5.1
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Powmr-Solar Fallback Hotspot"
+    password: "BXlVXFtG2EJw"
+
+captive_portal:
+web_server:
+  port: 80
+
+
+
+
+# Warning:
+#
+# If you configure a lot of the possible sensors etc. it could be that you run
+# out of memory (on esp8266). If you configure nearly all sensors etc. you run
+# in a stack-size issue. In this case you have to increase stack size!
+#
+#  https://github.com/esphome/issues/issues/855
+
+substitutions:
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+
+
+logger:
+  baud_rate: 0
+  level: DEBUG
+
+
+
+uart:
+  - id: uart_0
+    baud_rate: 2400
+    tx_pin: ${tx_pin}
+    rx_pin: ${rx_pin}
+#    debug:
+#      direction: BOTH
+#      dummy_receiver: false
+#      after:
+#        delimiter: "\r"
+#      sequence:
+#        - lambda: UARTDebug::log_string(direction, bytes);
+
+pipsolar:
+  uart_id: uart_0
+  id: inverter0
+
+sensor:
+  - platform: pipsolar
+    pipsolar_id: inverter0
+    grid_voltage:
+      name: "grid_voltage"
+    grid_frequency:
+      name: "grid_frequency"
+    ac_output_voltage:
+      name: "ac_output_voltage"
+    ac_output_frequency:
+      name: "ac_output_frequency"
+    ac_output_apparent_power:
+      name: "ac_output_apparent_power"
+    ac_output_active_power:
+      name: "ac_output_active_power"
+    output_load_percent:
+      name: "output_load_percent"
+    bus_voltage:
+      name: "bus_voltage"
+    battery_voltage:
+      name: "battery_voltage"
+      id: battery_voltage
+    battery_charging_current:
+      name: "battery_charging_current"
+      id: battery_charging_current
+    battery_capacity_percent:
+      name: "battery_capacity_percent"
+    inverter_heat_sink_temperature:
+      name: "inverter_heat_sink_temperature"
+    pv_input_current_for_battery:
+      name: "pv_input_current_for_battery"
+    pv_input_voltage:
+      name: "pv_input_voltage"
+#    battery_voltage_scc:
+#      name: "battery_voltage_scc"
+    battery_discharge_current:
+      name: "battery_discharge_current"
+      id: battery_discharge_current
+#    battery_voltage_offset_for_fans_on:
+#      name: "battery_voltage_offset_for_fans_on"
+#    eeprom_version:
+#      name: "${name} eeprom_version"
+    pv_charging_power:
+      name: "pv_charging_power"
+
+
+
+  - platform: template
+    name: "battery_power_in"
+    id: battery_power_in
+    unit_of_measurement: W
+    update_interval: 10s
+    lambda: |-
+      return (id(battery_voltage).state * (id(battery_charging_current).state));
+
+  - platform: template
+    name: "battery_power_out"
+    id: battery_power_out
+    unit_of_measurement: W
+    update_interval: 10s
+    lambda: |-
+      return (id(battery_voltage).state * (id(battery_discharge_current).state));
+
+
+text_sensor:
+  - platform: pipsolar
+    pipsolar_id: inverter0
+    device_mode:
+      name: "device_mode"
+#    last_qpigs:
+#      name: "${name} last_qpigs"
+#    last_qpiri:
+#      name: "${name} last_qpiri"
+#    last_qmod:
+#      name: "${name} last_qmod"
+#    last_qflag:
+#      name: "${name} last_qflag"
+
+binary_sensor:
+  - platform: pipsolar
+    pipsolar_id: inverter0
+    add_sbu_priority_version:
+      name: "add_sbu_priority_version"
+    configuration_status:
+      name: "configuration_status"
+#    scc_firmware_version:
+#      name: "${name} scc_firmware_version"
+    load_status:
+      name: "load_status"
+    battery_voltage_to_steady_while_charging:
+      name: "battery_voltage_to_steady_while_charging"
+    charging_status:
+      name: "charging_status"
+#    scc_charging_status:
+#      name: "scc_charging_status"
+    ac_charging_status:
+      name: "ac_charging_status"
+    charging_to_floating_mode:
+      name: "charging_to_floating_mode"
+    switch_on:
+      name: "switch_on"
+#    dustproof_installed:
+#      name: "${name} dustproof_installed"
+#    silence_buzzer_open_buzzer:
+#      name: "silence_buzzer_open_buzzer"
+#    overload_bypass_function:
+#      name: "overload_bypass_function"
+#    lcd_escape_to_default:
+#      name: "lcd_escape_to_default"
+#    overload_restart_function:
+#      name: "overload_restart_function"
+#    over_temperature_restart_function:
+#      name: "over_temperature_restart_function"
+#    backlight_on:
+#      name: "${name} backlight_on"
+
+switch:
+  - platform: pipsolar
+    pipsolar_id: inverter0
+    output_source_priority_utility:
+      name: "output_source_priority_utility"
+    output_source_priority_solar:
+      name: "output_source_priority_solar"
+    output_source_priority_battery:
+      name: "output_source_priority_battery"
+    input_voltage_range:
+      name: "input_voltage_range"
+    pv_ok_condition_for_parallel:
+      name: "pv_ok_condition_for_parallel"
+    pv_power_balance:
+      name: "pv_power_balance"
+button:
+  - platform: restart
+    name: "powmr-solar Restart" 
+output:
+  - platform: pipsolar
+    pipsolar_id: inverter0
+    battery_recharge_voltage:
+      id: inverter0_battery_recharge_voltage_out
